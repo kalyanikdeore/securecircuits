@@ -49,16 +49,20 @@ function Orders() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
 
+ 
+
   // Formik validation for Order Quotation Update
   const formik = useFormik({
     initialValues: {
       order_quotation: "",
       order_remark: "",
+      quote_supplier: "",
     },
     enableReinitialize: true,
     validationSchema: Yup.object({
       order_quotation: Yup.string().required("Quotation file is required"),
       order_remark: Yup.string().required("Remark is required"),
+        quote_supplier: Yup.string().required("Supplier is required"),
     }),
     onSubmit: async (values) => {
       try {
@@ -66,6 +70,7 @@ function Orders() {
           order_id: selectedOrder?.order_id,
           order_quotation: values.order_quotation,
           order_remark: values.order_remark,
+          quote_supplier: values.quote_supplier,
           order_stage: "6",
         };
 
@@ -94,6 +99,7 @@ function Orders() {
     formik.setValues({
       order_quotation: order.order_quotation || "",
       order_remark: order.order_remark || "",
+        quote_supplier: order.quote_supplier || "",
     });
   };
 
@@ -375,30 +381,68 @@ function Orders() {
     }
   };
 
+  // const getQuotations = async (order) => {
+  //   setSelectedOrder(order);
+  //   setShowQuotationModal(true);
+  //   setQuotationLoading(true);
+
+  //   try {
+  //     const res = await axios.get(
+  //       `${BASE_URL}admin/getdatawhere/tbl_supplier_quotes/sq_order_id/${order.order_id}`
+  //     );
+
+  //     if (res.data.status) {
+  //       setQuotations(Array.isArray(res.data.data) ? res.data.data : [res.data.data]);
+  //     } else {
+  //       setQuotations([]);
+  //     }
+  //   } catch (err) {
+  //     console.log("Quotation Fetch Error:", err);
+  //     toast.error("Failed to fetch quotations");
+  //     setQuotations([]);
+  //   } finally {
+  //     setQuotationLoading(false);
+  //   }
+  // };
+
   const getQuotations = async (order) => {
-    setSelectedOrder(order);
-    setShowQuotationModal(true);
-    setQuotationLoading(true);
+  console.log("SELECTED ORDER:", order);
+  console.log("ORDER ID:", order.order_id);
 
-    try {
-      const res = await axios.get(
-        `${BASE_URL}admin/getdatawhere/tbl_supplier_quotes/sq_order_id/${order.order_id}`
-      );
+  setSelectedOrder(order);
+  setShowQuotationModal(true);
+  setQuotationLoading(true);
 
-      if (res.data.status) {
-        setQuotations(Array.isArray(res.data.data) ? res.data.data : [res.data.data]);
-      } else {
-        setQuotations([]);
-      }
-    } catch (err) {
-      console.log("Quotation Fetch Error:", err);
-      toast.error("Failed to fetch quotations");
+  try {
+    const url = `${BASE_URL}admin/getdatawhere/tbl_supplier_quotes/sq_order_id/${order.order_id}`;
+
+    console.log("QUOTATION API URL:", url);
+
+    const res = await axios.get(url);
+
+    console.log("QUOTATION API RESPONSE:", res.data);
+    console.log("QUOTATION DATA:", res.data?.data);
+
+    if (res.data.status && res.data.data) {
+      const data = Array.isArray(res.data.data)
+        ? res.data.data
+        : [res.data.data];
+
+      console.log("FINAL QUOTATIONS:", data);
+
+      setQuotations(data);
+    } else {
+      console.log("NO QUOTATION FOUND");
       setQuotations([]);
-    } finally {
-      setQuotationLoading(false);
     }
-  };
-
+  } catch (err) {
+    console.log("Quotation Fetch Error:", err);
+    toast.error("Failed to fetch quotations");
+    setQuotations([]);
+  } finally {
+    setQuotationLoading(false);
+  }
+};
   return (
     <>
       <div className="container-fluid px-3 px-lg-4 py-4">
@@ -591,27 +635,52 @@ function Orders() {
                                 {order.cust_code}
                               </span>
                             </div>
-                            <span className="fw-semibold">Supplier  Quote:</span>{" "}
+                            {/* <span className="fw-semibold">Supplier  Quote:</span>{" "}
                             <span
                               className="text-primary fw-bold"
                               style={{ cursor: "pointer", fontSize: "16px" }}
                               onClick={() => getQuotations(order)}
                             >
                               Received Supplier Quotations
-                            </span> <br />
-                            <span className="fw-semibold">Sended Quote:</span>{" "}
+                            </span>  */}
+
+
+
+<span className="fw-semibold">Supplier Quote:</span>{" "}
+
+{true ? (
+  <span
+    className="text-success fw-bold"
+    style={{ cursor: "pointer", fontSize: "16px" }}
+    onClick={() => getQuotations(order)}
+  >
+    View Quote
+  </span>
+) : (
+  <span className="text-danger fw-bold">
+    No Quote
+  </span>
+)}
+
+
+
+                            <br />
+
+                            
+                            <span className="fw-semibold">Customer  Quote:</span>{" "}
                             {order.order_quotation ? (
                               <a
                                 href={`${BASE_URL}public/Uploads/${order.order_quotation}`}
-                                className="text-danger fw-bold text-decoration-none"
+                                className="text-primary fw-bold text-decoration-none"
                                 style={{ cursor: "pointer", fontSize: "16px" }}
                                 target="_blank"
                               >
-                                Sended Customer Quotations
+                                View Quote
                               </a>
                             ) : (
-                              <span className="text-danger fw-bold">No Sended Quote</span>
+                              <span className="text-danger fw-bold">No Quote</span>
                             )}
+                            
                           </td>
 
                           {["1", "2", "3"].includes(adminrole) && (
@@ -967,6 +1036,7 @@ function Orders() {
                             >
                               <i className="fa-solid fa-ellipsis-vertical"></i>
                             </button>
+                         
 
                             <ul className="dropdown-menu">
                               {(msg.que_send === "customer" || msg.que_send === "supplier") && (
@@ -1066,10 +1136,39 @@ function Orders() {
                 </div>
 
                 <div className="chat-footer">
+                   <label
+    htmlFor="query-file-upload"
+    className="chat-attach-btn"
+    title="Upload Photo / PDF"
+  >
+    <i className="fa-solid fa-paperclip"></i>
+  </label>
+    <input
+    id="query-file-upload"
+    type="file"
+    accept="image/png,image/jpeg,image/jpg,application/pdf"
+    style={{ display: "none" }}
+    onChange={(e) => {
+      const file = e.target.files[0];
+
+      if (!file) return;
+
+      // 5 MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size must be less than 5 MB");
+        e.target.value = "";
+        return;
+      }
+
+      setSelectedFile(file);
+    }}
+  />
+  
                   <input
                     type="text"
                     className="chat-input"
-                    disabled={!editMessageId}
+                    // disabled={!editMessageId}
+                    disabled={editMessageId === null}
                     placeholder={
                       editMessageId
                         ? "Edit message..."
@@ -1232,6 +1331,47 @@ function Orders() {
               <form onSubmit={formik.handleSubmit}>
                 <div className="model-add-edit-modal-body">
                   <div className="row g-3">
+
+
+<div className="col-md-12">
+  <label className="order-form-label mt-3">
+    Quote Supplier <span className="text-danger">*</span>
+  </label>
+
+<select
+  name="quote_supplier"
+  className={`form-select ${
+    formik.touched.quote_supplier && formik.errors.quote_supplier
+      ? "is-invalid"
+      : ""
+  }`}
+  value={formik.values.quote_supplier}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+>
+  <option value="">Select Supplier</option>
+
+  {supplierData
+    .filter((supplier) => Number(supplier.supp_status) === 1)
+    .map((supplier) => (
+      <option
+        key={supplier.supp_id}
+        value={supplier.supp_id}
+      >
+        {supplier.supp_contact_person} - {supplier.supp_company_name}
+      </option>
+    ))}
+</select>
+
+  {formik.touched.quote_supplier &&
+    formik.errors.quote_supplier && (
+      <div className="invalid-feedback d-block">
+        {formik.errors.quote_supplier}
+      </div>
+    )}
+</div>
+
+
                     <div className="col-md-12">
                       <div className="simple-file-box">
                         <label className="simple-file-label">
@@ -1295,6 +1435,7 @@ function Orders() {
                         )}
                       </div>
                     </div>
+
 
                     <div className="col-md-12">
                       <label className="order-form-label mt-3">

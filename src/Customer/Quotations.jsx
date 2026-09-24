@@ -123,15 +123,16 @@ function Quotations() {
               id="ordersTable"
               data-searchable-table
             >
-              {/* <thead>
-                <tr className="text-center">
+              <thead>
+                {/* <tr className="text-center">
+                 <th>Supplier ID</th>
                   <th>Action</th>
                   <th>Order Code</th>
                   <th>Quotation</th>
                   <th>Remark</th>
                   <th>Request Date & Time</th>
-                </tr>
-              </thead> */}
+                </tr> */}
+              </thead>
               <tbody className="activity-date-time">
                 {loading ? (
                   <tr>
@@ -150,11 +151,16 @@ function Quotations() {
                     <td colSpan="5" className="text-center py-3 text-danger">
                       No quotations found.
                     </td>
+                    
                   </tr>
                 ) : (
                   quotations.map((item, index) => (
                     <tr key={item.order_id || index} className="text-center">
+                  <td className="fw-semibold">
+  {item.quote_supplier || "N/A"}
+</td>
                       <td>
+                        
                         <button
                           className="btn btn-sm btn-outline-success"
                           onClick={() => handleOpenModal(item.order_id)}

@@ -4,10 +4,15 @@ import axios from "axios";
 import { BASE_URL } from "../Config/Base-url";
 import toast from "react-hot-toast";
 
+
 function Approved() {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+const [selectedOrder, setSelectedOrder] = useState(null);
+const [assignRemark, setAssignRemark] = useState("");
+  
 
   useEffect(() => {
     getorderData();
@@ -18,9 +23,11 @@ function Approved() {
     setError(null);
 
     try {
-      const response = await axios.get(
-        `${BASE_URL}admin/getdatawhere/tbl_orders/order_stage/8`
-      );
+  const response = await axios.get(
+  `${BASE_URL}admin/getdatawhere/tbl_orders/order_stage/8`
+);
+
+console.log("API RESPONSE:", response.data);
 
       if (response.data.status) {
         setQuotations(response.data.data);
@@ -61,6 +68,7 @@ function Approved() {
             >
               <thead>
                 <tr className="text-center">
+                  <th>Action</th>
                   <th>Order Code</th>
                   <th>Quotation</th>
                   <th>Remark</th>
@@ -89,6 +97,19 @@ function Approved() {
                 ) : (
                   quotations.map((item, index) => (
                     <tr key={item.order_id || index} className="text-center">
+                      <td>            
+     <button
+  type="button"
+  className="btn border-danger text-danger"
+  onClick={() => {
+    setSelectedOrder(item);
+    setAssignRemark("");
+    setShowAssignModal(true);
+  }}
+>
+  Assign Supplier
+</button>
+</td>
                       <td className="fw-bold">{item.order_code || "N/A"}</td>
 
                       <td>
@@ -106,16 +127,98 @@ function Approved() {
                       <td>
                         {item.order_request_date} {item.order_request_time}
                       </td>
+                     
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
+          
+          
         </section>
+        {showAssignModal && (
+  <div
+    className="modal fade show d-block"
+    tabIndex="-1"
+    style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+  >
+    <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">Assign Supplier</h5>
+
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowAssignModal(false)}
+          ></button>
+        </div>
+
+        <div className="modal-body">
+
+          {/* Supplier Name */}
+          <div className="mb-3">
+            
+            <label className="form-label fw-semibold">
+              Supplier Name
+            </label>
+
+          <input
+  type="text"
+  className="form-control"
+  value={selectedOrder?.supplier_name || ""}
+  readOnly
+/>
+          </div>
+
+          {/* Remark */}
+          <div className="mb-3">
+            <label className="form-label fw-semibold">
+              Remark
+            </label>
+
+            <textarea
+              className="form-control"
+              rows="4"
+              placeholder="Enter remark"
+              value={assignRemark}
+              onChange={(e) => setAssignRemark(e.target.value)}
+            ></textarea>
+          </div>
+
+        </div>
+
+        <div className="modal-footer">
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowAssignModal(false)}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-danger"
+          >
+            Assign Supplier
+          </button>
+
+        </div>
+
       </div>
+    </div>
+  </div>
+)}
+      </div>
+      
     </>
   );
+  
 }
+
 
 export default Approved;

@@ -178,6 +178,7 @@ function MainApp() {
           <Route path="/user-auth/orders" element={<SuppOrders />} />
           <Route path="/user-auth/quotations" element={<SuppQuotations />} />
           <Route path="/user-auth/dispatches" element={<SuppDispatches />} />
+          <Route path="/user-auth/approved" element={<Approved />} />
         </Route>
       </Routes>
     </>

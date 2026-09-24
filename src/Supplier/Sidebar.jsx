@@ -23,6 +23,7 @@ function Sidebar() {
     orders: 0,
     quotations: 0,
     dispatches: 0,
+      approved: 0,
   });
 
   useEffect(() => {
@@ -80,6 +81,7 @@ function Sidebar() {
         orders: supplierOrders.length,
         quotations: 0,
         dispatches: 0,
+          approved: 0,
       });
     } catch (error) {
       console.log(error);
@@ -96,6 +98,8 @@ function Sidebar() {
 
       case "dispatches":
         return counts.dispatches;
+          case "approved":
+      return counts.approved;
 
       default:
         return 0;
@@ -164,11 +168,17 @@ function Sidebar() {
               </div>
             ))
           ) : (menus
+
             .filter((menu) => {
               if (menu.menu_status != 1) return false;
 
               // Admin la sarv menu
               if (isSupplier) return true;
+
+                if (menu.menu_routes === "approved") return true;
+          // Approved - always show
+          // if (menu.menu_routes === "approved") return true;
+
 
               // Staff la assigned menu
               return menuAccess.includes(String(menu.menu_id));
