@@ -124,14 +124,14 @@ function Quotations() {
               data-searchable-table
             >
               <thead>
-                {/* <tr className="text-center">
-                 <th>Supplier ID</th>
+                <tr className="text-center">
+                 {/* <th>Supplier ID</th> */}
                   <th>Action</th>
                   <th>Order Code</th>
                   <th>Quotation</th>
                   <th>Remark</th>
                   <th>Request Date & Time</th>
-                </tr> */}
+                </tr>
               </thead>
               <tbody className="activity-date-time">
                 {loading ? (
@@ -156,9 +156,9 @@ function Quotations() {
                 ) : (
                   quotations.map((item, index) => (
                     <tr key={item.order_id || index} className="text-center">
-                  <td className="fw-semibold">
+                  {/* <td className="fw-semibold">
   {item.quote_supplier || "N/A"}
-</td>
+</td> */}
                       <td>
                         
                         <button

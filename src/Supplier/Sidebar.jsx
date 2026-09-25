@@ -60,34 +60,72 @@ function Sidebar() {
   };
 
 
+  // const getCounts = async () => {
+  //   try {
+  //     const res = await axios.get(
+  //       `${BASE_URL}supplier/getSupplierOrders/${SuppId}`
+  //     );
+
+  //     const orders = res.data.data || [];
+
+  //     const supplierOrders = orders.filter((item) => {
+  //       if (!item.order_transfer_supplier) return false;
+
+  //       return item.order_transfer_supplier
+  //         .split(",")
+  //         .map((id) => id.trim())
+  //         .includes(String(SuppId));
+  //     });
+
+  //     setCounts({
+  //       orders: supplierOrders.length,
+  //       quotations: 0,
+  //       dispatches: 0,
+  //         approved: supplierOrders.length,
+  //     });
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
+
+
   const getCounts = async () => {
-    try {
-      const res = await axios.get(
-        `${BASE_URL}supplier/getSupplierOrders/${SuppId}`
+  try {
+    const res = await axios.get(
+      `${BASE_URL}supplier/getSupplierOrders/${SuppId}`
+    );
+
+    const orders = res.data.data || [];
+
+    // Only logged-in supplier orders
+    const supplierOrders = orders.filter((item) => {
+      if (!item.order_transfer_supplier) return false;
+
+      return item.order_transfer_supplier
+        .split(",")
+        .map((id) => id.trim())
+        .includes(String(SuppId));
+    });
+
+    // Only approved orders for logged-in supplier
+    const approvedOrders = supplierOrders.filter((item) => {
+      return (
+        String(item.approved_supplier_id) === String(SuppId) &&
+        Number(item.approved_status) === 1
       );
+    });
 
-      const orders = res.data.data || [];
+    setCounts({
+      orders: supplierOrders.length,
+      quotations: 0,
+      dispatches: 0,
+      approved: approvedOrders.length,
+    });
 
-      const supplierOrders = orders.filter((item) => {
-        if (!item.order_transfer_supplier) return false;
-
-        return item.order_transfer_supplier
-          .split(",")
-          .map((id) => id.trim())
-          .includes(String(SuppId));
-      });
-
-      setCounts({
-        orders: supplierOrders.length,
-        quotations: 0,
-        dispatches: 0,
-          approved: 0,
-      });
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
+  } catch (error) {
+    console.log("Count Error:", error);
+  }
+};
   const getCardCount = (route) => {
     switch (route) {
       case "orders":
@@ -165,6 +203,7 @@ function Sidebar() {
                 <div className="sidebar-skeleton-icon"></div>
                 <div className="sidebar-skeleton-text"></div>
                 <div className="sidebar-skeleton-count"></div>
+                    <div className="sidebar-skeleton-count"></div>
               </div>
             ))
           ) : (menus
@@ -176,6 +215,7 @@ function Sidebar() {
               if (isSupplier) return true;
 
                 if (menu.menu_routes === "approved") return true;
+                
           // Approved - always show
           // if (menu.menu_routes === "approved") return true;
 

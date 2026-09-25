@@ -63,6 +63,8 @@ import SuppOrders from "./Supplier/Orders";
 import SuppQuotations from "./Supplier/Quotations";
 import SuppDispatches from "./Supplier/Dispatches";
 import SuppProfile from "./Supplier/Profile";
+// import SuppApproved from "./Supplier/Approved";
+import SuppApproved from "./Supplier/Approved";
 
 
 /* ================= ADMIN LAYOUT ================= */
@@ -178,7 +180,8 @@ function MainApp() {
           <Route path="/user-auth/orders" element={<SuppOrders />} />
           <Route path="/user-auth/quotations" element={<SuppQuotations />} />
           <Route path="/user-auth/dispatches" element={<SuppDispatches />} />
-          <Route path="/user-auth/approved" element={<Approved />} />
+          {/* <Route path="/user-auth/approved" element={<Approved />} /> */}
+<Route path="/user-auth/approved" element={<SuppApproved />} />
         </Route>
       </Routes>
     </>

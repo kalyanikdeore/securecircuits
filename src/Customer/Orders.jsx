@@ -600,6 +600,36 @@ function Orders() {
                 </div>
 
                 <div className="chat-footer">
+                  
+  <label
+    htmlFor="query-file-upload"
+    className="chat-attach-btn"
+    title="Upload Photo / PDF"
+  >
+    <i className="fa-solid fa-paperclip"></i>
+  </label>
+    <input
+    id="query-file-upload"
+    type="file"
+    accept="image/png,image/jpeg,image/jpg,application/pdf"
+    style={{ display: "none" }}
+    onChange={(e) => {
+      const file = e.target.files[0];
+
+      if (!file) return;
+
+      // 5 MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size must be less than 5 MB");
+        e.target.value = "";
+        return;
+      }
+
+      setSelectedFile(file);
+    }}
+  />
+  
+                  
                   <input
                     type="text"
                     className="chat-input"

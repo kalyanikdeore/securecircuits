@@ -25,6 +25,8 @@ function Orders() {
   const [showCartModal, setShowCartModal] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [cartLoading, setCartLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+const [sendingMessage, setSendingMessage] = useState(false);
 
   // New State for checking existing quote ID
   const [existingQuoteId, setExistingQuoteId] = useState(null);
@@ -192,22 +194,95 @@ function Orders() {
     }
   };
 
+  // const sendMessage = async () => {
+  //   if (message.trim() === "") return;
+
+  //   await axios.post(`${BASE_URL}supplier/insert/tbl_query`, {
+  //     que_order_id: selectedOrder.order_id,
+  //     que_cust_id: selectedOrder.order_cust_id,
+  //     que_supp_id: SuppId,
+  //     que_send: "supplier",
+  //     que_message: message,
+  //     que_cust_read: 0,
+  //     que_supp_read: 1,
+  //   });
+
+  //   setMessage("");
+  //   getMessages(selectedOrder.order_id);
+  // };
+
+
   const sendMessage = async () => {
-    if (message.trim() === "") return;
+  if (message.trim() === "" && !selectedFile) return;
 
-    await axios.post(`${BASE_URL}supplier/insert/tbl_query`, {
-      que_order_id: selectedOrder.order_id,
-      que_cust_id: selectedOrder.order_cust_id,
-      que_supp_id: SuppId,
-      que_send: "supplier",
-      que_message: message,
-      que_cust_read: 0,
-      que_supp_read: 1,
-    });
+  setSendingMessage(true);
 
-    setMessage("");
-    getMessages(selectedOrder.order_id);
-  };
+  try {
+    let attachmentName = "";
+
+    // =========================
+    // Upload Attachment
+    // =========================
+    if (selectedFile) {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const uploadRes = await axios.post(
+        `${BASE_URL}supplier/fileupload`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (!uploadRes.data.status || !uploadRes.data.files) {
+        toast.error(uploadRes.data.message || "File upload failed");
+        return;
+      }
+
+      attachmentName = Object.values(uploadRes.data.files)[0];
+    }
+
+    // =========================
+    // Save Query
+    // =========================
+    const res = await axios.post(
+      `${BASE_URL}supplier/insert/tbl_query`,
+      {
+        que_order_id: selectedOrder.order_id,
+        que_cust_id: selectedOrder.order_cust_id,
+        que_supp_id: SuppId,
+        que_send: "supplier",
+        que_message: message.trim(),
+        que_attachment: attachmentName,
+        que_cust_read: 0,
+        que_supp_read: 1,
+      }
+    );
+
+    if (res.data.status) {
+      setMessage("");
+      setSelectedFile(null);
+
+      // file input reset
+      const fileInput = document.getElementById("query-file-upload");
+      if (fileInput) {
+        fileInput.value = "";
+      }
+
+      await getMessages(selectedOrder.order_id);
+    } else {
+      toast.error(res.data.message || "Message sending failed");
+    }
+  } catch (error) {
+    console.error("Send Message Error:", error);
+    toast.error("Something went wrong!");
+  } finally {
+    setSendingMessage(false);
+  }
+};
 
   const markSupplierRead = async (orderId) => {
     try {
@@ -569,7 +644,7 @@ function Orders() {
 
               <div className="model-add-edit-modal-body p-0">
                 <div className="chat-container">
-                  {messages
+                  {/* {messages
                     .filter(
                       (msg) =>
                         msg.que_send === "supplier" ||
@@ -599,12 +674,213 @@ function Orders() {
                           </span>
                         </div>
                       </div>
-                    ))}
+                    ))} */}
+{messages
+  .filter(
+    (msg) =>
+      msg.que_send === "supplier" ||
+      (msg.que_send === "customer" && msg.que_status == 1)
+  )
+  .map((msg) => {
+    const isSupplier = msg.que_send === "supplier";
+    const attachment = msg.que_attachment;
 
+    const attachmentUrl = attachment
+      ? `${BASE_URL}public/Uploads/${attachment}`
+      : "";
+
+    const isImage = attachment
+      ? /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment)
+      : false;
+
+    const isPdf = attachment
+      ? /\.pdf$/i.test(attachment)
+      : false;
+
+    return (
+      <div
+        key={msg.que_id}
+        className={`chat-message ${isSupplier ? "right" : "left"}`}
+      >
+        <div
+          className={`chat-bubble ${
+            isSupplier ? "sent" : "received"
+          }`}
+        >
+          {/* ================= TEXT MESSAGE ================= */}
+          {(msg.que_message || "").trim() !== "" && (
+            <div className="chat-message-text">
+              {msg.que_send === "customer"
+                ? msg.que_edit_message || msg.que_message
+                : msg.que_message}
+            </div>
+          )}
+
+          {/* ================= IMAGE ATTACHMENT ================= */}
+          {attachment && isImage && (
+            <div className="chat-attachment-image">
+              <a
+                href={attachmentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src={attachmentUrl}
+                  alt="Attachment"
+                  className="chat-image-preview"
+                />
+              </a>
+            </div>
+          )}
+
+          {/* ================= PDF ATTACHMENT ================= */}
+          {attachment && isPdf && (
+            <a
+              href={attachmentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="chat-pdf-attachment"
+            >
+              <div className="chat-pdf-icon">
+                <i className="fa-solid fa-file-pdf"></i>
+              </div>
+
+              <div className="chat-pdf-details">
+                <span className="chat-pdf-title">
+                  PDF Attachment
+                </span>
+
+                <span className="chat-pdf-name">
+                  {attachment}
+                </span>
+              </div>
+
+              <i className="fa-solid fa-download chat-pdf-download"></i>
+            </a>
+          )}
+
+          {/* ================= OTHER FILE ================= */}
+          {attachment && !isImage && !isPdf && (
+            <a
+              href={attachmentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="chat-file-attachment"
+            >
+              <i className="fa-solid fa-paperclip"></i>
+              <span>{attachment}</span>
+            </a>
+          )}
+
+          {/* ================= TIME ================= */}
+          <span className="chat-time">
+            {new Date(
+              `1970-01-01T${msg.que_created_time}`
+            ).toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          </span>
+        </div>
+      </div>
+    );
+  })}
                   <div ref={messagesEndRef}></div>
                 </div>
-
                 <div className="chat-footer">
+
+  {selectedFile && (
+    <div className="chat-selected-file">
+      <div className="chat-selected-file-info">
+        <i
+          className={`fa-solid ${
+            selectedFile.type === "application/pdf"
+              ? "fa-file-pdf"
+              : "fa-image"
+          }`}
+        ></i>
+
+        <span>{selectedFile.name}</span>
+      </div>
+
+      <button
+        type="button"
+        className="chat-remove-file"
+        onClick={() => {
+          setSelectedFile(null);
+
+          const fileInput =
+            document.getElementById("query-file-upload");
+
+          if (fileInput) {
+            fileInput.value = "";
+          }
+        }}
+      >
+        <i className="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  )}
+
+  <div className="chat-input-row">
+    <input
+      type="text"
+      className="chat-input"
+      placeholder="Type a message..."
+      value={message}
+      onChange={(e) => setMessage(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      }}
+    />
+
+    <label
+      htmlFor="query-file-upload"
+      className="chat-attach-btn"
+      title="Upload Image / PDF"
+    >
+      <i className="fa-solid fa-paperclip"></i>
+    </label>
+
+    <input
+      id="query-file-upload"
+      type="file"
+      accept="image/png,image/jpeg,image/jpg,application/pdf"
+      style={{ display: "none" }}
+      onChange={(e) => {
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("File size must be less than 5 MB");
+          e.target.value = "";
+          return;
+        }
+
+        setSelectedFile(file);
+      }}
+    />
+
+    <button
+      className="chat-send-btn"
+      onClick={sendMessage}
+      disabled={sendingMessage || (!message.trim() && !selectedFile)}
+    >
+      {sendingMessage ? (
+        <i className="fa-solid fa-spinner fa-spin"></i>
+      ) : (
+        <i className="fa-solid fa-paper-plane"></i>
+      )}
+    </button>
+  </div>
+</div>
+
+                {/* <div className="chat-footer">
                   <input
                     type="text"
                     className="chat-input"
@@ -612,11 +888,63 @@ function Orders() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                   />
+                  
+
+
+
+
+                   <label
+    htmlFor="query-file-upload"
+    className="chat-attach-btn"
+    title="Upload Photo / PDF"
+  >
+    <i className="fa-solid fa-paperclip"></i>
+  </label>
+    <input
+    id="query-file-upload"
+    type="file"
+    accept="image/png,image/jpeg,image/jpg,application/pdf"
+    style={{ display: "none" }}
+    onChange={(e) => {
+      const file = e.target.files[0];
+
+      if (!file) return;
+
+      // 5 MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size must be less than 5 MB");
+        e.target.value = "";
+        return;
+      }
+
+      setSelectedFile(file);
+    }}
+  />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                  
 
                   <button className="chat-send-btn" onClick={sendMessage}>
                     <i className="fa-solid fa-paper-plane"></i>
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
