@@ -9,6 +9,7 @@ function Approved() {
 
   const [approvedOrders, setApprovedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  
 
   useEffect(() => {
     if (SuppId) {
@@ -26,16 +27,18 @@ function Approved() {
         `${BASE_URL}supplier/getdatawhere/tbl_orders/assigned_supplier/${SuppId}`
       );
 
-      const orders = res.data.data || [];
+      const orders = Array.isArray(res.data.data)
+        ? res.data.data
+        : [];
 
       console.log("Logged Supplier ID:", SuppId);
-      console.log("API Orders:", orders);
+      console.log("All Assigned Orders:", orders);
 
       // Only logged-in supplier + Stage 8
       const approved = orders.filter((item) => {
         return (
           String(item.assigned_supplier) === String(SuppId) &&
-          Number(item.order_stage) === 3
+          Number(item.order_stage) === 8
         );
       });
 
@@ -140,7 +143,7 @@ function Approved() {
                     colSpan="5"
                     className="text-center py-4"
                   >
-                    No quotations found for Stage 8.
+                    No approved orders found.
                   </td>
                 </tr>
               )}

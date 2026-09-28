@@ -83,30 +83,57 @@ function Orders() {
   }, [messages, showQueryModal]);
 
   // Check if supplier has sent at least one active message
+  // const isSupplierResponded = messages.some(
+  //   (msg) => msg.que_send === "supplier" && msg.que_status == 1
+  // );
   const isSupplierResponded = messages.some(
-    (msg) => msg.que_send === "supplier" && msg.que_status == 1
-  );
+  (msg) =>
+    msg.que_send === "supplier" &&
+    Number(msg.que_status) === 1
+);
 
   // Messages API Call With Loading
-  const getMessages = async (orderId) => {
-    setMessagesLoading(true);
-    try {
-      const res = await axios.get(
-        `${BASE_URL}customer/getdatawhere/tbl_query/que_order_id/${orderId}`
-      );
+  // const getMessages = async (orderId) => {
+  //   setMessagesLoading(true);
+  //   try {
+  //     const res = await axios.get(
+  //       `${BASE_URL}customer/getdatawhere/tbl_query/que_order_id/${orderId}`
+  //     );
 
-      if (res.data.status) {
-        setMessages(res.data.data);
-      } else {
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error(err);
+  //     if (res.data.status) {
+  //       setMessages(res.data.data);
+  //     } else {
+  //       setMessages([]);
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     setMessages([]);
+  //   } finally {
+  //     setMessagesLoading(false);
+  //   }
+  // };
+const getMessages = async (orderId) => {
+  setMessagesLoading(true);
+
+  try {
+    const res = await axios.get(
+      `${BASE_URL}customer/getdatawhere/tbl_query/que_order_id/${orderId}`
+    );
+
+    console.log("CUSTOMER QUERY DATA:", res.data);
+
+    if (res.data.status && Array.isArray(res.data.data)) {
+      setMessages(res.data.data);
+    } else {
       setMessages([]);
-    } finally {
-      setMessagesLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("Customer Messages Error:", err);
+    setMessages([]);
+  } finally {
+    setMessagesLoading(false);
+  }
+};
 
   const sendMessage = async () => {
     if (message.trim() === "" || !isSupplierResponded) return;
@@ -545,55 +572,162 @@ function Orders() {
                       <p className="mt-2 text-muted">Loading messages...</p>
                     </div>
                   ) : (() => {
-                    const filteredMessages = messages.filter(
-                      (msg) =>
-                        msg.que_send === "customer" ||
-                        (msg.que_send === "supplier" && msg.que_status == 1)
-                    );
+//       const filteredMessages = messages.filter(
+//   (msg) =>
+//     msg.que_send === "customer" ||
+//     (msg.que_send === "supplier" && Number(msg.que_status) === 1)
+// );
+const filteredMessages = messages.filter(
+  (msg) =>
+    msg.que_send === "customer" ||
+    msg.que_send === "supplier"
+);
 
-                    if (filteredMessages.length === 0) {
-                      return (
-                        <div className="empty-chat-container">
-                          <div className="empty-chat-icon-wrapper">
-                            <i className="fa-solid fa-comments-nolock fa-lock"></i>
-                          </div>
+if (filteredMessages.length === 0) {
+  return (
+    <div className="empty-chat-container">
+      <div className="empty-chat-icon-wrapper">
+        <i className="fa-solid fa-comments-nolock fa-lock"></i>
+      </div>
 
-                          <h6 className="empty-chat-title">No Active Query</h6>
+      <h6 className="empty-chat-title">No Active Query</h6>
 
-                          <p className="empty-chat-description">
-                            No query has been received from the <strong>Secure Circuit team</strong> for this order yet.
-                          </p>
+      <p className="empty-chat-description">
+        No query has been received from the{" "}
+        <strong>Secure Circuit team</strong> for this order yet.
+      </p>
 
-                          <span className="empty-chat-status-badge">
-                            <i className="fa-solid fa-circle-info me-1"></i> Messaging will unlock once the team reaches out.
-                          </span>
-                        </div>
-                      );
-                    }
+      <span className="empty-chat-status-badge">
+        <i className="fa-solid fa-circle-info me-1"></i>
+        Messaging will unlock once the team reaches out.
+      </span>
+    </div>
+  );
+}
 
-                    return filteredMessages.map((msg) => (
-                      <div
-                        key={msg.que_id}
-                        className={`chat-message ${msg.que_send === "customer" ? "right" : "left"}`}
-                      >
-                        <div
-                          className={`chat-bubble ${msg.que_send === "customer" ? "sent" : "received"}`}
-                        >
-                          {msg.que_send === "supplier"
-                            ? (msg.que_edit_message || msg.que_message)
-                            : msg.que_message}
-                          <span className="chat-time">
-                            {new Date(
-                              `1970-01-01T${msg.que_created_time}`
-                            ).toLocaleTimeString("en-IN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    ));
+return filteredMessages.map((msg) => {
+  const attachment = msg.que_attachment || "";
+
+  const attachmentUrl = attachment
+    ? `${BASE_URL}public/Uploads/${attachment}`
+    : "";
+
+  const isImage =
+    /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment);
+
+  const isPdf =
+    /\.pdf$/i.test(attachment);
+
+  // otherwise original message
+  const displayMessage =
+    msg.que_send === "supplier"
+      ? msg.que_edit_message || msg.que_message
+      : msg.que_message;
+
+  return (
+    <div
+      key={msg.que_id}
+      className={`chat-message ${
+        msg.que_send === "customer" ? "right" : "left"
+      }`}
+    >
+      <div
+        className={`chat-bubble ${
+          msg.que_send === "customer"
+            ? "sent"
+            : "received"
+        }`}
+      >
+
+        {/* ================= MESSAGE ================= */}
+        {displayMessage && (
+          <div className="chat-message-text">
+            {displayMessage}
+          </div>
+        )}
+
+        {/* ================= IMAGE ================= */}
+        {attachment && isImage && (
+          <div className="chat-attachment-image mt-2">
+            <a
+              href={attachmentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src={attachmentUrl}
+                alt="Query Attachment"
+                className="chat-image-preview"
+              />
+            </a>
+          </div>
+        )}
+
+        {/* ================= PDF ================= */}
+        {attachment && isPdf && (
+          <a
+            href={attachmentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="chat-pdf-attachment mt-2"
+          >
+            <div className="chat-pdf-icon">
+              <i className="fa-solid fa-file-pdf"></i>
+            </div>
+
+            <div className="chat-pdf-details">
+              <span className="chat-pdf-title">
+                PDF Attachment
+              </span>
+
+              <span className="chat-pdf-name">
+                {attachment}
+              </span>
+            </div>
+
+            <i className="fa-solid fa-download chat-pdf-download"></i>
+          </a>
+        )}
+
+        {/* ================= OTHER FILE ================= */}
+        {attachment && !isImage && !isPdf && (
+          <a
+            href={attachmentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="chat-file-attachment mt-2"
+          >
+            <i className="fa-solid fa-paperclip me-1"></i>
+            {attachment}
+          </a>
+        )}
+
+        {/* ================= EDITED LABEL ================= */}
+        {/* {msg.que_send === "supplier" &&
+          msg.que_edit_message && (
+            <div className="chat-message-meta">
+              <small className="chat-edited-label">
+                Edited & Forwarded
+              </small>
+            </div>
+          )} */}
+
+        {/* ================= TIME ================= */}
+        <span className="chat-time">
+          {new Date(
+            `1970-01-01T${msg.que_created_time}`
+          ).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })}
+        </span>
+
+      </div>
+    </div>
+  );
+});
+                    
                   })()}
 
                   <div ref={messagesEndRef}></div>

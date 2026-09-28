@@ -97,7 +97,6 @@ function Sidebar() {
 
     const orders = res.data.data || [];
 
-    // Only logged-in supplier orders
     const supplierOrders = orders.filter((item) => {
       if (!item.order_transfer_supplier) return false;
 
@@ -107,7 +106,6 @@ function Sidebar() {
         .includes(String(SuppId));
     });
 
-    // Only approved orders for logged-in supplier
     const approvedOrders = supplierOrders.filter((item) => {
       return (
         String(item.approved_supplier_id) === String(SuppId) &&
@@ -126,6 +124,8 @@ function Sidebar() {
     console.log("Count Error:", error);
   }
 };
+
+
   const getCardCount = (route) => {
     switch (route) {
       case "orders":

@@ -5,63 +5,45 @@ import toast from "react-hot-toast";
 
 function Approved() {
   const [quotations, setQuotations] = useState([]);
-  const [supplierData, setSupplierData] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [assignRemark, setAssignRemark] = useState("");
 
-  // =====================================================
-  // LOAD ORDERS + SUPPLIERS
-  // =====================================================
+  const [assignRemark, setAssignRemark] = useState("");
+  const [assignLoading, setAssignLoading] = useState(false);
+
   useEffect(() => {
-    loadData();
+    getorderData();
+    getSuppliers();
   }, []);
 
-  const loadData = async () => {
+
+  const getorderData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [orderResponse, supplierResponse] = await Promise.all([
-        axios.get(
-          `${BASE_URL}admin/getdatawhere/tbl_orders/order_stage/8`
-        ),
+      const response = await axios.get( 
+        `${BASE_URL}admin/getdatawhere/tbl_orders/order_stage/8`
+      );
 
-        axios.get(
-          `${BASE_URL}admin/getdata/tbl_suppliers`
-        ),
-      ]);
+      console.log("Approved Orders:", response.data);
 
-      console.log("========== ORDERS API ==========");
-      console.log(orderResponse.data);
-
-      console.log("========== SUPPLIER API ==========");
-      console.log(supplierResponse.data);
-
-      // -------------------------------------------------
-      // ORDERS
-      // -------------------------------------------------
-      if (orderResponse.data?.status) {
-        setQuotations(orderResponse.data.data || []);
+      if (response.data.status) {
+        setQuotations(
+          Array.isArray(response.data.data)
+            ? response.data.data
+            : [response.data.data]
+        );
       } else {
         setQuotations([]);
       }
-
-      // -------------------------------------------------
-      // SUPPLIERS
-      // -------------------------------------------------
-      if (supplierResponse.data?.status) {
-        setSupplierData(supplierResponse.data.data || []);
-      } else {
-        setSupplierData([]);
-      }
-
     } catch (err) {
-      console.error("LOAD DATA ERROR:", err);
+      console.error("Order error:", err);
 
       setError("Failed to fetch data.");
       toast.error("Failed to load data!");
@@ -70,141 +52,138 @@ function Approved() {
     }
   };
 
-  // =====================================================
-  // GET SUPPLIER NAME USING SUPPLIER ID
-  // =====================================================
-  const getSupplierName = (supplierId) => {
 
-    if (
-      supplierId === null ||
-      supplierId === undefined ||
-      supplierId === ""
-    ) {
-      return "Not Assigned";
+  const getSuppliers = async () => {
+    try {
+      const response = await axios.get(
+        `${BASE_URL}admin/getdata/tbl_suppliers`
+      );
+
+      console.log("Suppliers:", response.data);
+
+      if (response.data.status) {
+        setSuppliers(
+          Array.isArray(response.data.data)
+            ? response.data.data
+            : [response.data.data]
+        );
+      } else {
+        setSuppliers([]);
+      }
+    } catch (err) {
+      console.error("Supplier error:", err);
+
+      toast.error("Failed to load suppliers!");
+    }
+  };
+
+  const getSupplierName = (supplierId) => {
+    if (!supplierId) {
+      return "N/A";
     }
 
-    const supplier = supplierData.find(
+    const supplier = suppliers.find(
       (item) =>
         String(item.supp_id) === String(supplierId)
     );
 
-    console.log("GET SUPPLIER NAME");
-    console.log("Supplier ID:", supplierId);
-    console.log("Matched Supplier:", supplier);
-
     if (!supplier) {
-      return "Not Assigned";
+      return "N/A";
     }
 
-    // Contact person
-    const contactPerson =
-      supplier.supp_contact_person || "";
-
-    // Company name
-    const companyName =
-      supplier.supp_company_name || "";
-
-    if (contactPerson && companyName) {
-      return `${contactPerson} - ${companyName}`;
-    }
-
-    if (contactPerson) {
-      return contactPerson;
-    }
-
-    if (companyName) {
-      return companyName;
-    }
-
-    return "Not Assigned";
+    return (
+      supplier.supp_contact_person ||
+      supplier.supp_company_name ||
+      supplier.supp_code ||
+      "Unnamed Supplier"
+    );
   };
 
-  // =====================================================
-  // OPEN ASSIGN SUPPLIER MODAL
-  // =====================================================
-  const handleAssignSupplier = (item) => {
+  const handleOpenAssignModal = (order) => {
+    console.log("Selected Order:", order);
 
-    const supplierName = getSupplierName(
-      item.quote_supplier
-    );
+    setSelectedOrder(order);
 
-    console.log("=================================");
-    console.log("SELECTED ORDER:", item);
-    console.log("SUPPLIER ID:", item.quote_supplier);
-    console.log("SUPPLIER NAME:", supplierName);
-    console.log("=================================");
+    setAssignRemark(order.assigned_remark || "");
 
-    setSelectedOrder({
-      ...item,
-      quote_supplier_name: supplierName,
-    });
-
-    setAssignRemark("");
     setShowAssignModal(true);
   };
 
-  // =====================================================
-  // CLOSE MODAL
-  // =====================================================
-  const closeAssignModal = () => {
-    setShowAssignModal(false);
+  const handleCloseAssignModal = () => {
+    if (assignLoading) return;
+
     setSelectedOrder(null);
     setAssignRemark("");
+    setShowAssignModal(false);
   };
 
-  // =====================================================
-  // ASSIGN SUPPLIER
-  // =====================================================
-  const handleAssignSupplierSubmit = async () => {
 
-    if (!selectedOrder) {
-      toast.error("Order not selected");
+  const handleAssignSupplier = async () => {
+    if (!selectedOrder?.order_id) {
+      toast.error("Order not selected!");
       return;
     }
 
+    // quote_supplier = Supplier ID
+    const supplierId =
+      // selectedOrder.assigned_supplier ||
+      // selectedOrder.quote_supplier;
+        selectedOrder?.assigned_supplier &&
+  selectedOrder.assigned_supplier !== "0"
+    ? selectedOrder.assigned_supplier
+    : selectedOrder?.quote_supplier;
+
+    if (!supplierId) {
+      toast.error("Supplier ID not found!");
+      console.log("Selected Order:", selectedOrder);
+      return;
+    }
+
+    setAssignLoading(true);
+
     try {
+      const payload = {
+        assigned_supplier: supplierId,
+        assigned_remark: assignRemark,
+        order_stage : 8,
+      };
 
-      console.log("ASSIGN SUPPLIER DATA:", {
-        order_id: selectedOrder.order_id,
-        quote_supplier: selectedOrder.quote_supplier,
-        supplier_name: selectedOrder.quote_supplier_name,
-        remark: assignRemark,
-      });
-
-      /*
-      // जेव्हा actual API तयार असेल तेव्हा uncomment करा
+      console.log("Assign Payload:", payload);
 
       const response = await axios.post(
-        `${BASE_URL}admin/assignSupplier`,
-        {
-          order_id: selectedOrder.order_id,
-          quote_supplier: selectedOrder.quote_supplier,
-          remark: assignRemark,
-        }
+        `${BASE_URL}admin/updatedata/tbl_orders/order_id/${selectedOrder.order_id}`,
+        payload
       );
 
-      if (!response.data.status) {
-        toast.error(response.data.message || "Assignment failed");
-        return;
+      console.log("Assign Response:", response.data);
+
+      if (response.data.status) {
+        toast.success("Supplier assigned successfully!");
+
+        handleCloseAssignModal();
+
+        // Refresh latest data
+        getorderData();
+      } else {
+        toast.error(
+          response.data.message ||
+            "Failed to assign supplier!"
+        );
       }
-      */
-
-      toast.success("Supplier assigned successfully!");
-
-      closeAssignModal();
-
-      loadData();
-
-    } catch (error) {
+    } catch (err) {
+      console.error("Assign Supplier Error:", err);
 
       console.error(
-        "ASSIGN SUPPLIER ERROR:",
-        error
+        "API Error Response:",
+        err.response?.data
       );
 
       toast.error(
-        "Failed to assign supplier!"
+        err.response?.data?.message ||
+          "Failed to assign supplier!"
       );
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -212,10 +191,9 @@ function Approved() {
     <>
       <div className="container-fluid px-3 px-lg-4 py-4">
 
-        {/* =====================================================
+        {/* =========================
             PAGE HEADING
-        ====================================================== */}
-
+        ========================= */}
         <div className="page-heading">
 
           <div className="page-heading-copy">
@@ -228,7 +206,6 @@ function Approved() {
             </span>
 
             <div>
-
               <p className="eyebrow mb-1">
                 All
               </p>
@@ -236,18 +213,13 @@ function Approved() {
               <h1 className="h3 mb-1">
                 Approved
               </h1>
-
             </div>
 
           </div>
 
         </div>
 
-
-        {/* =====================================================
-            TABLE
-        ====================================================== */}
-
+     
         <section className="panel">
 
           <div className="table-responsive">
@@ -255,6 +227,7 @@ function Approved() {
             <table
               className="table align-middle mb-0"
               id="ordersTable"
+              data-searchable-table
             >
 
               <thead>
@@ -285,12 +258,9 @@ function Approved() {
 
               </thead>
 
-
               <tbody className="activity-date-time">
 
-                {/* LOADING */}
-
-                {loading && (
+                {loading ? (
 
                   <tr>
 
@@ -303,12 +273,9 @@ function Approved() {
 
                   </tr>
 
-                )}
+                ) : error ? (
 
-
-                {/* ERROR */}
-
-                {!loading && error && (
+          
 
                   <tr>
 
@@ -321,34 +288,25 @@ function Approved() {
 
                   </tr>
 
-                )}
+                ) : quotations.length === 0 ? (
 
+        
 
-                {/* NO DATA */}
+                  <tr>
 
-                {!loading &&
-                  !error &&
-                  quotations.length === 0 && (
+                    <td
+                      colSpan="5"
+                      className="text-center py-4"
+                    >
+                      No quotations found for Stage 8.
+                    </td>
 
-                    <tr>
+                  </tr>
 
-                      <td
-                        colSpan="5"
-                        className="text-center py-4"
-                      >
-                        No quotations found for Stage 8.
-                      </td>
+                ) : (
 
-                    </tr>
+           
 
-                  )}
-
-
-                {/* ORDERS */}
-
-                {!loading &&
-                  !error &&
-                  quotations.length > 0 &&
                   quotations.map((item, index) => (
 
                     <tr
@@ -359,14 +317,13 @@ function Approved() {
                     >
 
                       {/* ACTION */}
-
                       <td>
 
                         <button
                           type="button"
                           className="btn border-danger text-danger"
                           onClick={() =>
-                            handleAssignSupplier(item)
+                            handleOpenAssignModal(item)
                           }
                         >
                           Assign Supplier
@@ -374,66 +331,54 @@ function Approved() {
 
                       </td>
 
-
                       {/* ORDER CODE */}
-
                       <td className="fw-bold">
 
-                        {item.order_code || "N/A"}
+                        {item.order_code ||
+                          "N/A"}
 
                       </td>
-
 
                       {/* QUOTATION */}
-
                       <td>
 
-                        {item.order_quotation ? (
-
-                          <a
-                            href={`${BASE_URL}public/Uploads/${item.order_quotation}`}
-                            className="text-danger fw-bold text-decoration-none"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            View Quotations
-                          </a>
-
-                        ) : (
-
-                          <span>
-                            No Quotation
-                          </span>
-
-                        )}
+                        <a
+                          href={`${BASE_URL}public/Uploads/${item.order_quotation}`}
+                          className="text-danger fw-bold text-decoration-none"
+                          style={{
+                            cursor: "pointer",
+                            fontSize: "16px",
+                          }}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View Quotations
+                        </a>
 
                       </td>
-
 
                       {/* REMARK */}
-
                       <td>
 
-                        {item.order_remark || "N/A"}
+                        {item.order_remark ||
+                          "N/A"}
 
                       </td>
 
-
                       {/* DATE */}
-
                       <td>
 
-                        {item.order_request_date || "N/A"}
+                        {item.order_request_date}{" "}
 
-                        {" "}
-
-                        {item.order_request_time || ""}
+                        {item.order_request_time}
 
                       </td>
 
                     </tr>
 
-                  ))}
+                  ))
+
+                )}
 
               </tbody>
 
@@ -443,12 +388,10 @@ function Approved() {
 
         </section>
 
+   
 
-        {/* =====================================================
-            ASSIGN SUPPLIER MODAL
-        ====================================================== */}
 
-        {/* {showAssignModal && (
+        {showAssignModal && (
 
           <div
             className="modal fade show d-block"
@@ -463,9 +406,8 @@ function Approved() {
 
               <div className="modal-content">
 
-
-
-                <div className="modal-header">
+{/*            
+                <div className="modal-header"   style={{ backgroundColor: "linear-gradient(135deg, #e00404, #661a1a),color: "#fff"" }}>
 
                   <h5 className="modal-title">
                     Assign Supplier
@@ -474,42 +416,61 @@ function Approved() {
                   <button
                     type="button"
                     className="btn-close"
-                    onClick={closeAssignModal}
+                    onClick={
+                      handleCloseAssignModal
+                    }
+                    disabled={assignLoading}
                   ></button>
 
-                </div>
+                </div> */}
+<div
+  className="modal-header"
+  style={{
+    background: "linear-gradient(135deg, #e00404, #661a1a)",
+    color: "#fff"
+  }}
+>
+  <h5 className="modal-title">Assign Supplier</h5>
 
-
-
+  <button
+    type="button"
+    className="btn-close btn-close-white"
+    onClick={handleCloseAssignModal}
+    disabled={assignLoading}
+  ></button>
+</div>
                 <div className="modal-body">
 
-
-
+                  {/* SUPPLIER NAME */}
                   <div className="mb-3">
 
                     <label className="form-label fw-semibold">
-                      Supplier Name
+                      Supplier Quote
                     </label>
 
                     <input
                       type="text"
                       className="form-control"
-                      value={
-                        selectedOrder?.quote_supplier_name ||
-                        "Not Assigned"
-                      }
+                      // value={getSupplierName(
+                      //   selectedOrder?.assigned_supplier ||
+                      //   selectedOrder?.quote_supplier
+                      // )}
+                      value={getSupplierName(
+  selectedOrder?.assigned_supplier &&
+  selectedOrder.assigned_supplier !== "0"
+    ? selectedOrder.assigned_supplier
+    : selectedOrder?.quote_supplier
+)}
                       readOnly
                     />
 
                   </div>
 
-
-               
-
+                  {/* REMARK */}
                   <div className="mb-3">
 
                     <label className="form-label fw-semibold">
-                      Remark
+                       Assign Remark
                     </label>
 
                     <textarea
@@ -528,14 +489,15 @@ function Approved() {
 
                 </div>
 
-
-
-                <div className="modal-footer">
+                {/* <div className="modal-footer">
 
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={closeAssignModal}
+                    onClick={
+                      handleCloseAssignModal
+                    }
+                    disabled={assignLoading}
                   >
                     Cancel
                   </button>
@@ -544,13 +506,40 @@ function Approved() {
                     type="button"
                     className="btn btn-danger"
                     onClick={
-                      handleAssignSupplierSubmit
+                      handleAssignSupplier
                     }
+                    disabled={assignLoading}
                   >
-                    Assign Supplier
+
+                    {assignLoading
+                      ? "Assigning..."
+                      : "Assign Supplier"}
+
                   </button>
 
-                </div>
+                </div> */}
+                <div
+  className="modal-footer"
+  style={{ justifyContent: "space-between" }}
+>
+  <button
+    type="button"
+    className="btn btn-secondary"
+    onClick={handleCloseAssignModal}
+    disabled={assignLoading}
+  >
+    Cancel
+  </button>
+
+  <button
+    type="button"
+    className="btn btn-danger"
+    onClick={handleAssignSupplier}
+    disabled={assignLoading}
+  >
+    {assignLoading ? "Assigning..." : "Assign Supplier"}
+  </button>
+</div>
 
               </div>
 
@@ -558,106 +547,7 @@ function Approved() {
 
           </div>
 
-        )} */}
-
-        {showAssignModal && (
-  <div
-    className="modal fade show d-block"
-    tabIndex="-1"
-    style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-  >
-    <div className="modal-dialog modal-dialog-centered modal-md">
-      <div className="modal-content border-0 rounded-3 shadow-lg overflow-hidden">
-
-        {/* HEADER */}
-        <div
-          className="modal-header text-white border-0 px-4 py-3"
-          style={{
-            background: "linear-gradient(135deg, #e11d2e, #a80f19)",
-          }}
-        >
-          <h5 className="modal-title fw-bold mb-0">
-            Assign Supplier
-          </h5>
-
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={closeAssignModal}
-          ></button>
-        </div>
-
-        {/* BODY */}
-        <div className="modal-body p-4">
-
-          {/* SUPPLIER NAME */}
-          <div className="mb-4">
-            <label className="form-label fw-semibold text-dark">
-              Supplier Name
-            </label>
-
-            <input
-              type="text"
-              className="form-control form-control-lg rounded-3"
-              // value={
-              //   selectedOrder?.quote_supplier_name ||
-              //   "Not Assigned"
-              // }
-               value={
-    selectedOrder?.quote_supplier_name
-      ? selectedOrder.quote_supplier_name
-          .toLowerCase()
-          .replace(/\b\w/g, (char) => char.toUpperCase())
-      : "Not Assigned"
-  }
-              readOnly
-            />
-          </div>
-
-          {/* REMARK */}
-          <div className="mb-2">
-            <label className="form-label fw-semibold text-dark">
-              Remark
-            </label>
-
-            <textarea
-              className="form-control rounded-3"
-              rows="4"
-              placeholder="Enter remark"
-              value={assignRemark}
-              onChange={(e) =>
-                setAssignRemark(e.target.value)
-              }
-            ></textarea>
-          </div>
-
-        </div>
-
-        {/* FOOTER */}
-        <div className="modal-footer border-top px-4 py-3 gap-2">
-
-          <button
-            type="button"
-            className="btn btn-secondary px-4 py-2 rounded-3"
-            onClick={closeAssignModal}
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-danger px-4 py-2 rounded-3 fw-semibold"
-            onClick={handleAssignSupplierSubmit}
-          >
-            Assign Supplier
-          </button>
-
-        </div>
-
-      </div>
-    </div>
-  </div>
-)}
+        )}
 
       </div>
     </>

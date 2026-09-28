@@ -368,6 +368,7 @@ const [sendingMessage, setSendingMessage] = useState(false);
                 <tr className="text-center">
                   <th>action</th>
                   <th>Order Detail</th>
+                  {/* <th>download gerber file</th> */}
                   <th>Stag</th>
                   <th>Activity</th>
                 </tr>
